@@ -149,7 +149,7 @@ async function handleLogout() {
 
       <!-- ── Footer ── -->
       <footer class="app-footer">
-        <span>© 2025 ECG Monitor - Student Project</span>
+        <span>© 2026 ECG Monitor - Student Project</span>
       </footer>
     </div>
 
