@@ -59,31 +59,57 @@ export const usePatientStore = defineStore('patient', () => {
 
   // ── Clinical Status (computed based on vitals) ─────────
   const clinicalStatus = computed(() => {
-    const bpm = currentBPM.value
     const sys = systolicBP.value
     const dia = diastolicBP.value
-    const { tachycardia, bradycardia, systolicHigh, diastolicHigh } = alarmSettings.value
+    const bpm = currentBPM.value
+    const { tachycardia, bradycardia } = alarmSettings.value
 
-    // Critical: abnormal HR
-    if (bpm > tachycardia + 30 || bpm < bradycardia - 15) {
+    // 1. Evaluate Heart Rate (Severity: 0=Normal, 1=Review, 2=Critical)
+    let hrLevel = 0
+    let hrReason = ''
+    if (bpm > tachycardia + 20 || bpm <= bradycardia - 15) {
+      hrLevel = 2
+      hrReason = bpm > tachycardia ? 'Severe Tachycardia' : 'Severe Bradycardia'
+    } else if (bpm > tachycardia || bpm < bradycardia) {
+      hrLevel = 1
+      hrReason = bpm > tachycardia ? 'Tachycardia' : 'Bradycardia'
+    }
+
+    // 2. Evaluate Blood Pressure (AHA Guidelines)
+    let bpLevel = 0
+    let bpReason = ''
+    if (sys >= 140 || dia >= 90) {
+      bpLevel = 2 // Stage 2 Hypertension -> Critical/High Alert
+      bpReason = 'Stage 2 Hypertension'
+    } else if (sys >= 130 || dia >= 80) {
+      bpLevel = 1 // Stage 1 Hypertension -> Review
+      bpReason = 'Stage 1 Hypertension'
+    } else if (sys >= 120 && sys < 130 && dia < 80) {
+      bpLevel = 1 // Elevated BP -> Review
+      bpReason = 'Elevated Blood Pressure'
+    }
+
+    // 3. Worst Parameter Wins Logic
+    const maxLevel = Math.max(hrLevel, bpLevel)
+
+    if (maxLevel === 2) {
       return {
         level: 'CRITICAL',
         color: 'danger',
-        reason: bpm > tachycardia + 30 ? 'Severe tachycardia detected' : 'Severe bradycardia detected'
+        reason: hrLevel === 2 ? hrReason : bpReason
       }
-    }
-    // Review: elevated BP or moderate HR anomaly
-    if (sys > systolicHigh || dia > diastolicHigh || bpm > tachycardia || bpm < bradycardia - 5) {
+    } else if (maxLevel === 1) {
       return {
         level: 'REVIEW NEEDED',
         color: 'warning',
-        reason: sys > systolicHigh ? 'Elevated blood pressure' : bpm > tachycardia ? 'Elevated heart rate' : 'Low heart rate'
+        reason: hrLevel === 1 ? hrReason : bpReason
       }
     }
+
     return {
       level: 'NORMAL',
       color: 'normal',
-      reason: 'All vitals within normal range'
+      reason: 'All vitals within normal limits'
     }
   })
 
