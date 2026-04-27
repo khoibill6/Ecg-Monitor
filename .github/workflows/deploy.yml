@@ -1,0 +1,58 @@
+name: 🚀 Deploy to Cloudflare Pages
+
+# ============================================================
+# TRIGGER: Workflow này chạy MỖI KHI bạn push code lên nhánh main
+# ============================================================
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest # Chạy trên máy chủ Linux miễn phí của GitHub
+
+    steps:
+      # BƯỚC 1: Tải source code về máy chủ CI/CD
+      - name: 📥 Checkout source code
+        uses: actions/checkout@v4
+
+      # BƯỚC 2: Cài đặt pnpm (package manager bạn đang dùng)
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      # BƯỚC 3: Cài đặt Node.js
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      # BƯỚC 4: Cài tất cả thư viện (đọc từ pnpm-lock.yaml)
+      - name: 📚 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # BƯỚC 5: Build ứng dụng Vue → tạo ra thư mục ./dist
+      # Các biến VITE_* được inject vào đây từ GitHub Secrets
+      - name: 🏗️ Build application
+        run: pnpm run build
+        env:
+          # --- Biến Firebase (lấy từ GitHub Secrets) ---
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+
+      # BƯỚC 6: Deploy thư mục ./dist lên Cloudflare Pages
+      - name: 🌩️ Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./dist --project-name=vue-health-app
