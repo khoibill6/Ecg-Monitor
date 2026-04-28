@@ -75,18 +75,21 @@ export const usePatientStore = defineStore('patient', () => {
       hrReason = bpm > tachycardia ? 'Tachycardia' : 'Bradycardia'
     }
 
-    // 2. Evaluate Blood Pressure (AHA Guidelines)
+    // 2. Evaluate Blood Pressure
     let bpLevel = 0
     let bpReason = ''
     if (sys >= 140 || dia >= 90) {
       bpLevel = 2 // Stage 2 Hypertension -> Critical/High Alert
       bpReason = 'Stage 2 Hypertension'
-    } else if (sys >= 130 || dia >= 80) {
+    } else if (sys >= 130 || dia > 80) {
       bpLevel = 1 // Stage 1 Hypertension -> Review
       bpReason = 'Stage 1 Hypertension'
-    } else if (sys >= 120 && sys < 130 && dia < 80) {
+    } else if (sys > 120 && dia <= 80) {
       bpLevel = 1 // Elevated BP -> Review
       bpReason = 'Elevated Blood Pressure'
+    } else if (sys <= 90 || dia <= 60) {
+      bpLevel = 1 // Hypotension -> Review
+      bpReason = 'Hypotension'
     }
 
     // 3. Worst Parameter Wins Logic
