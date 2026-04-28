@@ -3,7 +3,7 @@
 //  views/LiveMonitor.vue — Main Monitoring Dashboard
 //  3-column layout: Patient info + ECG + Vitals | Alerts panel
 // ============================================================
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { usePatientStore } from '../stores/patient.js'
 import LiveECGDisplay from '../components/LiveECGDisplay.vue'
 
@@ -12,22 +12,19 @@ const store = usePatientStore()
 // Patient is now selected from the Patients view and managed in the store
 // The Active Patient details will be displayed in the Patient Info card automatically
 
-// ── Manual vital inputs (bound to store) ─────────────────
 const inputBPM = ref(store.currentBPM)
 const inputSystolic = ref(store.systolicBP)
 const inputDiastolic = ref(store.diastolicBP)
 const inputNote = ref(store.sessionNote)
 
-function applyVitals() {
-  store.setBPM(inputBPM.value)
-  store.systolicBP = inputSystolic.value
-  store.diastolicBP = inputDiastolic.value
-  store.sessionNote = inputNote.value
-}
+watch([inputBPM, inputSystolic, inputDiastolic, inputNote], ([bpm, sys, dia, note]) => {
+  store.setBPM(bpm)
+  store.systolicBP = sys
+  store.diastolicBP = dia
+  store.sessionNote = note
+})
 
-// ── Session actions ──────────────────────────────────────
 function handleStartMonitoring() {
-  applyVitals()
   store.startSession()
 }
 
