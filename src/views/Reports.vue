@@ -1,6 +1,24 @@
 <script setup>
 import { computed } from 'vue'
 import { usePatientStore } from '../stores/patient.js'
+import { Line } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  Filler
+} from 'chart.js'
+
+ChartJS.register(
+  Title, Tooltip, Legend,
+  LineElement, PointElement,
+  CategoryScale, LinearScale, Filler
+)
 
 const store = usePatientStore()
 
@@ -15,6 +33,105 @@ const alertPercentage = computed(() => {
   if (totalSessions.value === 0) return 0
   return Math.round((warningCount.value / totalSessions.value) * 100)
 })
+
+const chartDataBPM = computed(() => {
+  // Use a copy to avoid mutating the store array, and reverse for chronological order
+  const ascendingSessions = [...store.sessions].reverse().slice(-50) // last 50 for performance
+  return {
+    labels: ascendingSessions.map(s => {
+      const d = s.timestamp
+      if (!d) return ''
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }),
+    datasets: [
+      {
+        label: 'Heart Rate (BPM)',
+        data: ascendingSessions.map(s => s.bpm),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+        borderWidth: 2,
+        pointBackgroundColor: '#10b981',
+        pointRadius: 3,
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  }
+})
+
+const chartDataBP = computed(() => {
+  const ascendingSessions = [...store.sessions].reverse().slice(-50)
+  return {
+    labels: ascendingSessions.map(s => {
+      const d = s.timestamp
+      if (!d) return ''
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }),
+    datasets: [
+      {
+        label: 'Systolic BP (mmHg)',
+        data: ascendingSessions.map(s => s.systolicBP || 120),
+        borderColor: '#dc2626',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointBackgroundColor: '#dc2626',
+        pointRadius: 3,
+        tension: 0.4
+      },
+      {
+        label: 'Diastolic BP (mmHg)',
+        data: ascendingSessions.map(s => s.diastolicBP || 80),
+        borderColor: '#f59e0b',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointBackgroundColor: '#f59e0b',
+        pointRadius: 3,
+        tension: 0.4
+      }
+    ]
+  }
+})
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: {
+    mode: 'index',
+    intersect: false,
+  },
+  plugins: {
+    legend: {
+      position: 'top',
+      labels: {
+        font: { family: 'inherit', size: 12 },
+        usePointStyle: true,
+        boxWidth: 8
+      }
+    },
+    tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      titleFont: { size: 13, family: 'inherit' },
+      bodyFont: { size: 13, family: 'inherit' },
+      padding: 10,
+      cornerRadius: 6,
+      usePointStyle: true
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: false,
+      grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+      ticks: { font: { family: 'inherit' } }
+    },
+    x: {
+      grid: { display: false, drawBorder: false },
+      ticks: { 
+        font: { family: 'inherit' },
+        maxTicksLimit: 8
+      }
+    }
+  }
+}
 
 function exportPDF() {
   window.print()
@@ -86,6 +203,31 @@ function exportPDF() {
       </div>
     </div>
     
+    <!-- Advanced Analytical Charts -->
+    <div class="charts-grid mt-4">
+      <!-- Heart Rate Trend -->
+      <div class="card p-4">
+        <div class="card-header border-b-0 pb-4">
+          <span>Heart Rate Trend (Last 50 Sessions)</span>
+        </div>
+        <div class="chart-container">
+          <Line :data="chartDataBPM" :options="chartOptions" v-if="totalSessions > 0" />
+          <div v-else class="empty-chart">Tracking data will appear here.</div>
+        </div>
+      </div>
+
+      <!-- Blood Pressure Trend -->
+      <div class="card p-4">
+        <div class="card-header border-b-0 pb-4">
+          <span>Blood Pressure Trend (Last 50 Sessions)</span>
+        </div>
+        <div class="chart-container">
+          <Line :data="chartDataBP" :options="chartOptions" v-if="totalSessions > 0" />
+           <div v-else class="empty-chart">Tracking data will appear here.</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -182,6 +324,34 @@ function exportPDF() {
   width: 10px; height: 10px;
   border-radius: 50%;
   margin-right: 0.4rem;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+.empty-chart {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  background: var(--bg-body);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-subtle);
+}
+
+@media (max-width: 1024px) {
+  .charts-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
